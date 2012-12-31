@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 ###############################################################################
-# PrivEdit - a text editor for confidential documents
 #
-# The file on disk is a GPG document (with -c option, i.e. symmetric encryption)
-# Text editor loads and saves these files directly
+# NoPeeking - a text editor for GPG-encrypted textfiles
 #
 ###############################################################################
 # Copyright 2012, Oliver White
