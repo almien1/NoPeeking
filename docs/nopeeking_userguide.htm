@@ -1,0 +1,80 @@
+<html><head><title>NoPeeking</title></head>
+<body>
+<h1>User guide</h1>
+
+<h2>Overview</h2>
+
+<p>NoPeeking is a text editor that works directly with GPG files. 
+The file is always encrypted while on disk.  Once open, a file
+can be quickly saved back to disk, rendering it unreadable without 
+the password.</p>
+
+<h2>Running the program</h2>
+
+<p><tt><b>./nopeeking [filename.gpg]</b></tt></p>
+<p><img src="screenshot1_annotated_enGB.png"><br></p>
+
+<p>When a file is first opened, its contents will not be displayed.
+This is because it's still encrypted.  To start editing the file,
+type its password into the 2nd textbox, and click "Unlock".</p>
+
+<p>At any time, you can stop editing a file by clicking "Lock".
+This will save the file to disk (encrypted), and remove it from
+view.  To resume editing the file, type the password and click
+"Unlock".</p>
+
+<h2>Use of GPG</h2>
+
+<p>Files are saved using GPG's <i>symmetric encryption</i> - you can
+open the files directly by using <tt><b>gpg -d [filename]</b></tt>,
+and you can create files that are compatible with the text editor by
+running <tt><b>gpg -c [filename]</b></tt> on a text file</p>
+
+<p>GPG is run in a subprocess. Plaintext and passwords are passed to
+it using named pipes created in the system's temporary directory.</p>
+
+<h2>Timers</h2>
+
+<p>An <strong>Inactivity timer</strong> automatically locks the file
+(saves it to disk, and removes it from screen) after a period of
+inactivity.  This is the first timer displayed in the status bar, and
+will reset every time you modify the document</p>
+
+<p>The inactivity timer is designed to keep your file safe if you
+are distracted and leave the computer while a file is open</p>
+
+<p>A <strong>Password timer</strong> is slightly different.  This timer
+locks the file if it's been more than a certain length of time since
+the file's owner proved that they were still in control of the text editor.  
+To reset this timer, type the password and click "Reset".</p>
+
+<p>The inactivity timer is designed to prevent a file being kept open
+indefinitely by unauthorised parties</p>
+
+<h2>Options</h2>
+
+<p>Options are specified in the <tt><b>~/.NoPeeking</b></tt> file, one option per line,
+in the form <b>option_name = value</b></p>
+
+<dl>
+<dt>font</dt>
+<dd> - The font to use as a <a href="http://www.pygtk.org/docs/pygtk/class-pangofontdescription.html#constructor-pangofontdescription">Pango</a> description, e.g. "sans bold 10"</dd>
+<dt>fg</dt>
+<dd> - The foreground (text) colour, as either an #800000 RGB value, or a name like black</dd>
+<dt>bg</dt>
+<dd> - The background colour, as either an #800000 RGB value, or a name like white</dd>
+<dt>gpg</dt>
+<dd> - Location of the gpg program</dd>
+<dt>timer1</dt>
+<dd> - Number of seconds for the inactivity timer. Use "min" suffix to specify in minutes</dd>
+<dt>timer2</dt>
+<dd> - Number of seconds for the password timer.</dd>
+</dl> 
+
+<h2>Developers</h2>
+
+<p>The program is written in Python using the GTK toolkit, and shoud be readily modifiable
+by developers.  Send patches to ojwlists@gmail.com</p>
+
+</body></html>
+

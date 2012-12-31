@@ -1,0 +1,72 @@
+
+Run program with no arguments
+ - filename box is blank
+ - password is blank
+ - lock/unlock are greyed
+ - no text
+
+Observe interface:
+ - maximise/minimise/close buittons
+ - window title reflects app name
+ - file menu: new, open, save, quit
+ - help menu: about
+ - top of window: textboxes for filename and password, buttons for (unlock/refresh) and (lock/save)
+ - main window: text editor
+ - bottom of window: status bar
+
+Start typing
+ - countdown until text is discarded
+
+Allow inactivity countdown to expire
+ - text is discarded
+
+Start typing
+ - countdown until text is discarded
+
+When timer is nearly expired, continue typing
+ - inactivity countdown resets
+ - password countdown doesn't reset
+ 
+Continue occasionally typing until password countdown expires
+ - text is discarded
+
+Start typing, specify a filename that doesn't exist, and password
+ - save button is available
+ 
+Press save
+ - file is saved
+ - file is not plaintext
+ - saved file can be decrypted using "gpg -d filename" on command line
+ - text remains on screen
+ - password box is cleared
+ - filename box remains
+ - save button becomes "lock"
+ 
+Type some more text
+ - Lock button remains
+
+Type a different password
+ - Refresh button becomes available
+ 
+Press refresh
+ - Error: incorrect password
+ - incorrect password remains in textbox
+ - password counter keeps decrementing
+ 
+Type correct password and press refresh
+ - password counter resets
+ - password box is cleared
+ 
+Press "Lock"
+ - Unlock not available
+ - text is cleared
+ - no timers visible
+ 
+ 
+Examine console output 
+ - no error messages
+
+
+
+
+

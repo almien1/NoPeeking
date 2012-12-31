@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   id="svg3095"
+   version="1.1"
+   inkscape:version="0.48.3.1 r9886"
+   width="728"
+   height="487"
+   sodipodi:docname="screenshot1.svg"
+   inkscape:export-filename="/home/user/dev/nopeeking/docs/screenshot1_annotated_enGB.png"
+   inkscape:export-xdpi="74.18"
+   inkscape:export-ydpi="74.18">
+  <metadata
+     id="metadata3101">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs3099" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1280"
+     inkscape:window-height="1000"
+     id="namedview3097"
+     showgrid="false"
+     inkscape:zoom="0.56383995"
+     inkscape:cx="382.42347"
+     inkscape:cy="221.60514"
+     inkscape:window-x="0"
+     inkscape:window-y="24"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3095" />
+  <image
+     width="728"
+     height="487"
+     xlink:href="file:///home/user/dev/nopeeking/docs/screenshot1.png"
+     id="image3103"
+     x="0"
+     y="0" />
+  <path
+     style="opacity:0.99176953;color:#000000;fill:#ff94ff;fill-opacity:1;fill-rule:nonzero;stroke:#800080;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 91.53125 202.78125 L 66.96875 245.5 L 82.625 245.5 C 82.617 245.63156 82.59375 245.77251 82.59375 245.90625 L 82.59375 331.5 L 23.8125 331.5 C 19.296517 331.5 15.6875 335.14027 15.6875 339.65625 L 15.6875 354.0625 C 15.6875 358.57848 19.296517 362.21875 23.8125 362.21875 L 257.71875 362.21875 C 262.23473 362.21875 265.875 358.57848 265.875 354.0625 L 265.875 339.65625 C 265.875 335.14027 262.23473 331.5 257.71875 331.5 L 100.5 331.5 L 100.5 245.90625 C 100.5 245.77251 100.47705 245.63156 100.46875 245.5 L 116.125 245.5 L 91.53125 202.78125 z "
+     id="path3953" />
+  <text
+     xml:space="preserve"
+     style="font-size:16.87750244px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#700070;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+     x="19.452707"
+     y="352.75568"
+     id="text3105"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan3107"
+       x="19.452707"
+       y="352.75568">The filename to load or save</tspan></text>
+  <path
+     style="opacity:0.99176953;color:#000000;fill:#ff94ff;fill-opacity:1;fill-rule:nonzero;stroke:#800080;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 293.4375 250.4375 L 268.875 293.1875 L 284.53125 293.1875 C 284.52325 293.31906 284.5 293.42876 284.5 293.5625 L 284.5 385.71875 L 176.65625 385.71875 C 173.10232 385.71875 170.25 389.35902 170.25 393.875 L 170.25 408.3125 C 170.25 412.82848 173.10232 416.46875 176.65625 416.46875 L 360.71875 416.46875 C 364.27268 416.46875 367.125 412.82848 367.125 408.3125 L 367.125 393.875 C 367.125 389.35902 364.27268 385.71875 360.71875 385.71875 L 302.40625 385.71875 L 302.40625 293.5625 C 302.40625 293.42876 302.3833 293.31906 302.375 293.1875 L 318.03125 293.1875 L 293.4375 250.4375 z "
+     id="path3953-7" />
+  <text
+     xml:space="preserve"
+     style="font-size:16.87750244px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#700070;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+     x="174.01945"
+     y="406.99512"
+     id="text3105-3"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan3107-4"
+       x="174.01945"
+       y="406.99512">The password to use</tspan></text>
+  <path
+     style="opacity:0.99176953;color:#000000;fill:#ff94ff;fill-opacity:1;fill-rule:nonzero;stroke:#800080;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 423.53125 206.5625 L 404.28125 240.125 L 416.53125 240.125 C 416.52525 240.22841 416.53125 240.33238 416.53125 240.4375 L 416.53125 301.09375 L 332.15625 301.09375 C 328.61364 301.09375 325.75 304.70277 325.75 309.21875 L 325.75 323.65625 C 325.75 328.17223 328.61364 331.8125 332.15625 331.8125 L 515.625 331.8125 C 519.16761 331.8125 522 328.17223 522 323.65625 L 522 309.21875 C 522 304.70277 519.16761 301.09375 515.625 301.09375 L 430.5625 301.09375 L 430.5625 240.4375 C 430.5625 240.33238 430.53775 240.22841 430.53125 240.125 L 442.78125 240.125 L 423.53125 206.5625 z "
+     id="path3953-7-0" />
+  <text
+     xml:space="preserve"
+     style="font-size:16.87750244px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#700070;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+     x="329.52676"
+     y="322.34396"
+     id="text3105-9"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan3107-1"
+       x="329.52676"
+       y="322.34396">Open/decrypt the file</tspan></text>
+  <path
+     style="opacity:0.99176953;color:#000000;fill:#ff94ff;fill-opacity:1;fill-rule:nonzero;stroke:#800080;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 501.625 204.03125 L 490.21875 224.1875 L 497.5 224.1875 C 497.496 224.2495 497.46875 224.31196 497.46875 224.375 L 497.46875 247.15625 L 466.96875 247.15625 C 463.42614 247.15625 460.5625 250.79652 460.5625 255.3125 L 460.5625 269.71875 C 460.5625 274.23473 463.42614 277.875 466.96875 277.875 L 650.4375 277.875 C 653.98011 277.875 656.84375 274.23473 656.84375 269.71875 L 656.84375 255.3125 C 656.84375 250.79652 653.98011 247.15625 650.4375 247.15625 L 505.78125 247.15625 L 505.78125 224.375 C 505.78125 224.312 505.78515 224.24951 505.78125 224.1875 L 513.0625 224.1875 L 501.625 204.03125 z "
+     id="path3953-7-0-7" />
+  <text
+     xml:space="preserve"
+     style="font-size:16.87750244px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#700070;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+     x="464.34161"
+     y="268.41803"
+     id="text3105-9-1"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan3107-1-2"
+       x="464.34161"
+       y="268.41803">Close/encrypt the file</tspan></text>
+</svg>

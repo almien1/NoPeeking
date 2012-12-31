@@ -1,0 +1,536 @@
+#!/usr/bin/env python
+###############################################################################
+# PrivEdit - a text editor for confidential documents
+#
+# The file on disk is a GPG document (with -c option, i.e. symmetric encryption)
+# Text editor loads and saves these files directly
+#
+###############################################################################
+# Copyright 2012, Oliver White
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of#
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+###############################################################################
+import os
+import sys
+import pygtk
+import gtk
+import gtk.glade
+import gobject
+import pango
+import re
+import tempfile
+import subprocess
+import hashlib
+
+APP_NAME = "NoPeeking"
+COPYRIGHT = "Copyright (c) 2013, Oliver White"
+LICENSE = "GNU GPL v3 or later"
+DESCRIPTION = "A private text editor"
+
+TIMER_RATE = 1000 # milliseconds (this is just how often it checks the timers)
+
+self_location = "Unknown"
+self_hash = "Unknown"
+
+class privedit:
+  stored_password = None
+  last_operation = {}
+  gpg = "/usr/bin/gpg"
+  
+  def toggle_editable(self, checkbutton, textview):
+    textview.set_editable(checkbutton.get_active())
+
+  def toggle_cursor_visible(self, checkbutton, textview):
+    textview.set_cursor_visible(checkbutton.get_active())
+
+  def __init__(self):
+    self.visible = True
+    self.unlocked = False
+    self.t1 = 0 # seconds since file was opened or saved
+    self.t2 = 0 # seconds since password was definitely known
+    self.timeout1 = 60.0 * 0.5 # seconds
+    self.timeout2 = 60.0 * 1.5 # seconds
+
+    # The window itself
+    self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+    self.window.set_resizable(True)  
+    self.window.connect("destroy", self.quit)
+    self.window.set_title(APP_NAME)
+    self.window.set_icon_from_file("icon.svg")
+    self.window.set_border_width(0)
+    self.window.set_size_request(500, 300)
+    self.window.set_position(gtk.WIN_POS_CENTER)
+
+    box1 = gtk.VBox(False, 0)
+    self.window.add(box1)
+
+    # Menus
+    keys = gtk.AccelGroup()
+    self.window.add_accel_group(keys)
+    m_rootbar = gtk.MenuBar()
+    box1.pack_start(m_rootbar, False, False, 0)
+    # File menu
+    m2_file = gtk.MenuItem("File")
+    m_rootbar.append(m2_file)
+    m_file = gtk.Menu()
+    m_file_new = gtk.ImageMenuItem(gtk.STOCK_NEW, keys)
+    m_file_open = gtk.ImageMenuItem(gtk.STOCK_OPEN, keys)
+    m_file_save = gtk.ImageMenuItem(gtk.STOCK_SAVE, keys)
+    m_file_exit = gtk.ImageMenuItem(gtk.STOCK_QUIT, keys)
+    m_file.append(m_file_new)
+    m_file.append(m_file_open)
+    m_file.append(m_file_save)
+    m_file.append(m_file_exit)
+    m2_file.set_submenu(m_file)
+
+    # Help menu
+    m2_help = gtk.MenuItem("Help")
+    m_rootbar.append(m2_help)
+    m_help = gtk.Menu()
+    m2_help.set_right_justified(True)
+    m_help_contents = gtk.ImageMenuItem(gtk.STOCK_HELP, keys)
+    m_help_about = gtk.ImageMenuItem(gtk.STOCK_ABOUT, keys) # gtk v2.6 or later
+    m_help.append(m_help_contents)
+    m_help.append(m_help_about)
+    m2_help.set_submenu(m_help)
+
+    m_file_new.connect_object("activate", self.new_file, "")
+    m_file_open.connect_object("activate", self.open_file, "")
+    m_file_save.connect_object("activate", self.save, "")
+    m_file_exit.connect_object("activate", self.quit, "")
+    m_help_about.connect_object("activate", self.help_about, "")
+    m_help_contents.connect_object("activate", self.help_contents, "")
+
+    # A row of buttons that we expect to be oft-used:   
+    buttons = gtk.HBox(False, 10)
+    box1.pack_start(buttons, False, False, 5)
+    self.filename = gtk.Entry()
+    self.password = gtk.Entry()
+    self.password.set_visibility(False) # Display stars instead of password
+    self.filename.connect("changed", self.update_UI)
+    self.password.connect("changed", self.update_UI)
+    self.unlock_btn = gtk.Button()
+    self.unlock_btn_lbl = gtk.Label("Unlock")
+    self.unlock_btn.add(self.unlock_btn_lbl)
+    self.unlock_btn.connect("clicked", self.unlock)
+    self.lock_btn = gtk.Button()
+    self.lock_btn_lbl = gtk.Label("Lock")
+    self.lock_btn.add(self.lock_btn_lbl)
+    self.lock_btn.connect("clicked", self.lock)
+    
+    buttons.pack_start(self.filename)
+    buttons.pack_start(self.password)
+    buttons.pack_start(self.unlock_btn)
+    buttons.pack_start(self.lock_btn)
+
+    # The text editing area
+    sw = gtk.ScrolledWindow()
+    sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+    self.textview = gtk.TextView()
+    self.textbuffer = self.textview.get_buffer()
+    sw.add(self.textview)
+    self.textview.set_wrap_mode(gtk.WRAP_WORD)
+    self.textview.set_accepts_tab(False)
+    self.textbuffer.connect("changed", self.on_typing)
+    self.textview.show()
+    box1.pack_start(sw)
+
+    # A status-bar    
+    statusbars = gtk.HBox(False, 10)
+    box1.pack_start(statusbars, False, False, 0)
+    self.statusbar = gtk.Label("")
+    self.timer_info = gtk.Label("")
+    statusbars.pack_start(self.statusbar, False, False, 5)
+    statusbars.pack_start(self.timer_info, False, False, 5)
+          
+    # Config options allow changing the appearance  
+    configfile = os.path.expanduser("~/." + APP_NAME) # e.g. /home/user/.PrivEdit as a text file
+    if(os.path.exists(configfile)):
+      re_option = re.compile("^(\w+)\s*=\s*(.*)\s*$") # lines containing keyword = value
+      with open(configfile, "r") as f:
+        for line in f:
+          if(not line.startswith("#")):
+            result = re_option.match(line)
+            if(result):
+              k = result.group(1)
+              v = result.group(2)
+              if(k == "font"):
+                self.textview.modify_font(pango.FontDescription(v))
+              elif(k == "bg"): # background colour
+                self.textview.modify_base(gtk.STATE_NORMAL,gtk.gdk.color_parse(v))
+              elif(k == "fg"): # foreground (text) colour
+                self.textview.modify_text(gtk.STATE_NORMAL,gtk.gdk.color_parse(v))
+              elif(k == "timer1"):
+                self.timeout1 = self.parseTime(v, self.timeout1)
+              elif(k == "timer2"):
+                self.timeout2 = self.parseTime(v, self.timeout2)
+              elif(k == "gpg"):
+                self.gpg = v
+                print "Using GPG at \"%s\"" % self.gpg
+              else:
+                print "Unrecognised option %s" % k
+
+    self.update_UI()
+    gobject.timeout_add(TIMER_RATE, self.periodically)
+    self.periodically()
+    self.window.show_all()
+
+  def status(self, text):
+    self.statusbar.set_text(text)
+    
+  def new_file(self, widget=None):
+    if(self.unlocked):
+      if(self.textbuffer.get_modified()):
+        msgBox = gtk.MessageDialog(self.window, 
+          gtk.DIALOG_DESTROY_WITH_PARENT, 
+          gtk.MESSAGE_QUESTION, 
+          gtk.BUTTONS_NONE, 
+          "Save \"%s\"?" % self.filename.get_text())
+
+        msgBox.add_buttons("Save \"%s\"" % self.filename.get_text(), 1, "Discard changes", 2, "Cancel", 3)
+        r = msgBox.run()
+        msgBox.destroy()
+        if(r < 3):
+          if(r == 1):
+            self.lock()
+    self.textbuffer.set_text("")
+    self.textbuffer.set_modified(False)
+    self.password.set_text("")
+    self.filename.set_text("")
+    self.set_unlocked(True)
+    self.t1 = 0
+    self.t2
+    self.periodically()
+    self.window.set_title(APP_NAME)
+    
+  def open_file(self, widget=None):
+    """Prompts for a file to open, using the OS-specific file chooser"""
+    chooser = gtk.FileChooserDialog(title=None,action=gtk.FILE_CHOOSER_ACTION_OPEN,
+                                  buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+    if(False):
+      f1 = gtk.FileFilter()
+      f1.set_name("GPG files")
+      f1.add_pattern("*.gpg")
+      chooser.add_filter(f1)
+
+      f2 = gtk.FileFilter()
+      f2.set_name("All files")
+      f2.add_pattern("*")
+      chooser.add_filter(f2)
+      
+    response = chooser.run()
+    filename = chooser.get_filename()
+    chooser.destroy()
+    if(response == gtk.RESPONSE_OK):
+      self.load(filename)
+        
+  def load(self, filename):
+    """Chooses an encrypted file to work with.  It won't be decrypted or displayed until unlock() is called"""
+    self.filename.set_text(filename)
+    self.window.set_title(filename + " - " + APP_NAME)
+    if(not os.path.exists(filename)):
+      self.status("File doesn't exist - will be created when file is saved")
+      self.set_unlocked(True)
+
+  def lock(self, widget=None): # these functions have optional second argument to allow connecting them to GTK signals
+    """Saves the file (encrypted), and deletes all memory of the file's contents or password"""
+    self.save()
+    if(not self.unlocked): # When saving for first time, keep unlocked.
+      self.set_unlocked(True) # because we've just specified the filename and password
+    else:
+      self.stored_password = None
+      self.set_unlocked(False)
+      self.textbuffer.set_text("")
+    
+  def save(self, widget=None):
+    """Saves the file (encrypted) to disk, and keeps the file open for editing"""
+    # If a password is typed into the textbox, use that
+    password = self.password.get_text()
+    # otherwise use the password that we originally decrypted the file with
+    if(password == ""):
+      password = self.stored_password
+    if(not password):
+      self.status("Enter password to save file")
+    else:
+      filename = self.filename.get_text()
+      if(not filename):
+        self.status("Enter a filename")
+      else:
+        length = self.textbuffer.get_char_count()
+        it1 = self.textbuffer.get_iter_at_offset(0)
+        it2 = self.textbuffer.get_iter_at_offset(length)
+        self.save_gpg_file(filename, password, self.textbuffer.get_text(it1, it2))
+        self.textbuffer.set_modified(False)
+        self.password.set_text("")
+        self.t1 = 0
+        self.stored_password = password
+
+  def unlock(self, widget=None):
+    """Open an encrypted file for editing.  Call save() when needed, and lock() when finished."""
+    password = self.password.get_text()
+    if(not password):
+      self.status("Enter password to unlock")
+    else:
+      if(self.unlocked):
+        """If a file is already open, it doesn't need to be decrypted, but we are just proving
+           that the legitimate user is still present, thus resetting the timer"""
+        if(password == self.stored_password):
+          self.t1 = 0
+          self.t2 = 0
+          self.password.set_text("") # Only use once
+        else:
+          self.status("Incorrect password")
+      else:
+        filename = self.filename.get_text()
+        if(not filename):
+          self.status("Enter a filename")
+        else:
+          text = self.load_gpg_file(filename, password)
+          if(text == None):
+            self.status("Error loading file - %s" % self.last_operation.get("error", "unknown error"))
+          else:
+            self.status("OK")
+            self.textbuffer.set_text(text)
+            self.stored_password = password
+            self.password.set_text("") # Only use once
+            self.t1 = 0
+            self.t2 = 0
+            self.set_unlocked(True)
+
+  def update_UI(self, widget = None):
+    """Updates buttons to reflect system state"""
+    self.set_unlocked(self.unlocked)
+    
+  def set_unlocked(self, unlocked):
+    """Update the UI to show whether we currently have a file open for editing"""
+    self.unlocked = unlocked
+
+    filename = self.filename.get_text()
+    password = self.password.get_text()
+    exists = os.path.exists(filename)
+    
+    # Can only save if we have a filename
+    # "Save" if we're able to save to a new file (that doesn't already exist)
+    # "Lock" if we're able to save to an existing file that we have open
+    self.lock_btn.set_sensitive(filename != "" and ((password != "" and not exists) or (self.unlocked and self.stored_password != None)))
+    self.lock_btn_lbl.set_text(self.unlocked and "Lock" or "Save")
+    
+    if(not exists):
+      self.unlock_btn.set_sensitive(False)
+      self.unlock_btn_lbl.set_text("Unlock")
+    else:
+      self.unlock_btn.set_sensitive(filename != "" and password != "")
+      self.unlock_btn_lbl.set_text(self.unlocked and "Refresh" or "Unlock")
+
+  def periodically(self):
+    """Updates timers, and locks the file if it's been left unattended"""
+    text = ""
+    if(self.textbuffer.get_char_count() > 0):
+      self.t1 += float(TIMER_RATE) / 1000.0
+      self.t2 += float(TIMER_RATE) / 1000.0
+
+      remain1 = self.timeout1 - self.t1
+      remain2 = self.timeout2 - self.t2
+      if(remain1 < 0 or remain2 < 0):
+        self.on_timeout()
+
+      filename = self.filename.get_text()
+      action = filename and "auto-lock" or "text is discarded"
+      text = "%s/%s until %s" % (self.formatTime(remain1), self.formatTime(remain2), action)
+    self.timer_info.set_text(text)
+    return(True)
+
+  def on_timeout(self):
+    """Called when the file has been left unattended for too long"""
+    if(self.unlocked):
+      self.lock()
+      self.status("Locked due to inactivity")
+    else:
+      self.stored_password = None
+      self.textbuffer.set_text("")
+      self.status("Deleted due to inactivity")
+
+  def on_typing(self, widget=None):
+    """Called when the text is being edited"""
+    self.t1 = 0
+
+  def formatTime(self, seconds):
+    """Make human-readable value for time"""
+    minutes = seconds / 60.0
+    if(minutes > 2):
+      return("%1.0f minutes" % minutes)
+    return("%1.0f sec" % seconds)
+
+  def parseTime(self, text, default):
+    """Parse a timeout value from config file"""
+    r = re.match("(\d+)\s*(\w*)", text)
+    if(r == None):
+      print "Unrecognised time format \"%s\" - use values like 40 sec or 2 min" % text
+      return(default)
+    else:
+      num = r.group(1)
+      unit = r.group(2)
+      if(unit in ("m","min")):
+        return(float(num) * 60)
+      elif(unit in ("","s", "sec")):
+        return(float(num))
+      else:
+        print "Unrecognised unit of time \"%s\" - use min for miunutes, or leave blank for seconds" % (unit,)
+        return(default)
+
+  def quit(self, widget):
+    gtk.main_quit()
+
+
+  def load_gpg_file(self, filename, password):
+    """Load text from an encrypted file"""
+    self.last_operation = {"overview":"Loading from %s" % filename}
+    
+    # Check inputs
+    if(not self.gpg_OK()):
+      self.last_operation["error"] = "GPG not available"
+      return(None)
+      
+    self.text = None
+    if(not os.path.exists(filename)):
+      self.last_operation["error"] =  "Can't open %s" % filename
+      return(None)
+    
+    # Temporary pipe to send password to GPG
+    tempdir = tempfile.mkdtemp()
+    passfile = os.path.join(tempdir, "password")
+    os.mkfifo(passfile)
+
+    # Run GPG to load and decrypt file
+    gpg_args = [self.gpg, "--decrypt", "--quiet", "--batch", "--no-use-agent", "--output", "-", "--passphrase-file", passfile, filename]
+    gpg_process = subprocess.Popen(gpg_args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #print "Command: %s" % " ".join(gpg_args)
+
+    # Supply password, retrieve plaintext and errors
+    text = None
+    with open(passfile, "w") as f1:
+      f1.write(password)      
+    with gpg_process.stdout as f2:
+      text = f2.read()
+    with gpg_process.stderr as f3:
+      self.last_operation["gpg_err"] = f3.read()
+
+    # Wait for GPG to finish, then cleanup temporary files
+    gpg_process.wait()
+    self.last_operation["gpg_return"] = gpg_process.returncode
+    os.unlink(passfile)
+    os.rmdir(tempdir)
+    if(self.last_operation["gpg_return"] == 2):
+      self.last_operation["error"] = "Wrong password"
+      return(None)
+    elif(self.last_operation["gpg_return"] != 0):
+      self.last_operation["error"] =  "GPG returned error " + self.last_operation["gpg_err"]
+      return(None)
+    return(text)
+    
+    
+  def save_gpg_file(self, filename, password, text):
+    """Save text to an encrypted file"""
+    self.last_operation = {"overview":"Saving to %s" % filename}
+    
+    if(not self.gpg_OK()):
+      self.last_operation["error"] = "GPG not available"
+      return(False)
+
+    # Temporary pipe for sending password to GPG
+    tempdir = tempfile.mkdtemp()
+    passfile = os.path.join(tempdir, "password")
+    os.mkfifo(passfile)
+
+    # Overwrite file 
+    if(os.path.exists(filename)):
+      self.last_operation["overwrite"] = "Deleted existing file"
+      os.unlink(filename)
+    
+    # Run GPG to encrypt data
+    gpg_args = [self.gpg, "--symmetric", "--quiet", "--batch", "--no-use-agent", "--output", filename, "--passphrase-file", passfile, "-"]
+    gpg_process = subprocess.Popen(gpg_args, stdin=subprocess.PIPE, stdout=None, stderr=subprocess.PIPE, close_fds=True)
+    #print "Command: %s" % " ".join(gpg_args)
+    
+    # Supply password and plaintext to GPG, store any error messages, and 
+    with open(passfile, "w") as f1:
+      f1.write(password)      
+    with gpg_process.stdin as f2:
+      f2.write(text)
+    with gpg_process.stderr as f3:
+      self.last_operation["gpg_err"] = f3.read()
+
+    # Wait for GPG to finish, then cleanup temporary files
+    gpg_process.wait()
+    self.last_operation["gpg_return"] = gpg_process.returncode
+    os.unlink(passfile)
+    os.rmdir(tempdir)
+    if(self.last_operation["gpg_return"] == 2):
+      self.last_operation["error"] = "Wrong password"
+      return(False)
+    elif(self.last_operation["gpg_return"] != 0):
+      self.last_operation["error"] = "GPG returned error" + last_operation["gpg_err"]
+      return(False)
+      
+    return(True)
+    
+  def gpg_OK(self):
+    """Tests whether GPG exists"""
+    return(os.path.exists(self.gpg))
+
+  def gpg_version(self):
+    """Gets the version of GPG we're using"""
+    version = "Unknown"
+    gpg_process = subprocess.Popen([self.gpg, "--version"], stdin=None, stdout=subprocess.PIPE, stderr=None, close_fds=True)
+    with gpg_process.stdout as f3:
+      version = f3.readline().rstrip()
+    gpg_process.wait()
+    return(version)
+  
+  def help_contents(self, widget=None):
+    """Opens the user-guide"""
+    filename = "docs/nopeeking_userguide.htm"
+    if("startfile" in dir(os)): # only works in windows - http://bugs.python.org/issue3177 and http://bugs.python.org/issue12522
+      os.startfile(filename)
+    else:
+      # as a fallback method, just say where the help file is
+      dlg = gtk.MessageDialog(self.window, 
+              gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_INFO, 
+              gtk.BUTTONS_OK, "See " + filename)
+      dlg.run()
+      dlg.destroy()
+    
+  def help_about(self, widget=None):
+    """Displays information about the program"""
+    msg = APP_NAME + "\n" + DESCRIPTION + "\n\n" + COPYRIGHT + "\n" + LICENSE
+    msg += "\n\nRunning \"" + self_location + "\" from \"" + os.getcwd() + "\"\nSHA256: " + self_hash
+    msg += "\n\nUsing " + self.gpg_version() + "\nAt \"" + self.gpg + "\""
+    
+
+    dlg = gtk.MessageDialog(self.window, 
+            gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_INFO, 
+            gtk.BUTTONS_OK, msg)
+    dlg.run()
+    dlg.destroy()
+
+
+if(__name__ == "__main__"):
+  self_location = sys.argv[0]
+  with open(self_location, "r") as f:
+    self_hash = hashlib.sha256(f.read()).hexdigest() # hash of our source-code
+    self_hash = " ".join(re.findall(".{8}", self_hash)) # divide into groups of 8 characters
+  app = privedit()
+  if(len(sys.argv) >= 2):
+    app.load(sys.argv[1])
+  gtk.main()
+
