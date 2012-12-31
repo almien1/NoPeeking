@@ -18,4 +18,6 @@ This will save the file to disk (encrypted), and remove it from
 view.  To resume editing the file, type the password and click
 "Unlock".
 
+The file is automatically locked if it has been left unattended
+for a while.
 
