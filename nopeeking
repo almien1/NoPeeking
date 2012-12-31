@@ -26,7 +26,6 @@ import gtk.glade
 import gobject
 import pango
 import re
-import tempfile
 import subprocess
 import hashlib
 
@@ -43,21 +42,15 @@ self_hash = "Unknown"
 class privedit:
   stored_password = None
   last_operation = {}
-  gpg = "/usr/bin/gpg"
-  
-  def toggle_editable(self, checkbutton, textview):
-    textview.set_editable(checkbutton.get_active())
-
-  def toggle_cursor_visible(self, checkbutton, textview):
-    textview.set_cursor_visible(checkbutton.get_active())
+  gpg = "gpg" # assumes it's in path, but means we can't use os.path.exists() on it
 
   def __init__(self):
     self.visible = True
     self.unlocked = False
     self.t1 = 0 # seconds since file was opened or saved
     self.t2 = 0 # seconds since password was definitely known
-    self.timeout1 = 60.0 * 0.5 # seconds
-    self.timeout2 = 60.0 * 1.5 # seconds
+    self.timeout1 = 60.0 * 5.0 # seconds
+    self.timeout2 = 60.0 * 30.0 # seconds
 
     # The window itself
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -404,19 +397,14 @@ class privedit:
       self.last_operation["error"] =  "Can't open %s" % filename
       return(None)
     
-    # Temporary pipe to send password to GPG
-    tempdir = tempfile.mkdtemp()
-    passfile = os.path.join(tempdir, "password")
-    os.mkfifo(passfile)
-
     # Run GPG to load and decrypt file
-    gpg_args = [self.gpg, "--decrypt", "--quiet", "--batch", "--no-use-agent", "--output", "-", "--passphrase-file", passfile, filename]
-    gpg_process = subprocess.Popen(gpg_args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    gpg_args = [self.gpg, "--decrypt", "--quiet", "--batch", "--no-use-agent", "--output", "-", "--passphrase-fd", "0", filename]
+    gpg_process = subprocess.Popen(gpg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #print "Command: %s" % " ".join(gpg_args)
 
     # Supply password, retrieve plaintext and errors
     text = None
-    with open(passfile, "w") as f1:
+    with  gpg_process.stdin as f1:
       f1.write(password)      
     with gpg_process.stdout as f2:
       text = f2.read()
@@ -426,8 +414,6 @@ class privedit:
     # Wait for GPG to finish, then cleanup temporary files
     gpg_process.wait()
     self.last_operation["gpg_return"] = gpg_process.returncode
-    os.unlink(passfile)
-    os.rmdir(tempdir)
     if(self.last_operation["gpg_return"] == 2):
       self.last_operation["error"] = "Wrong password"
       return(None)
@@ -445,51 +431,40 @@ class privedit:
       self.last_operation["error"] = "GPG not available"
       return(False)
 
-    # Temporary pipe for sending password to GPG
-    tempdir = tempfile.mkdtemp()
-    passfile = os.path.join(tempdir, "password")
-    os.mkfifo(passfile)
-
     # Overwrite file 
     if(os.path.exists(filename)):
       self.last_operation["overwrite"] = "Deleted existing file"
       os.unlink(filename)
     
     # Run GPG to encrypt data
-    gpg_args = [self.gpg, "--symmetric", "--quiet", "--batch", "--no-use-agent", "--output", filename, "--passphrase-file", passfile, "-"]
-    gpg_process = subprocess.Popen(gpg_args, stdin=subprocess.PIPE, stdout=None, stderr=subprocess.PIPE, close_fds=True)
-    #print "Command: %s" % " ".join(gpg_args)
+    gpg_args = [self.gpg, "--symmetric", "--quiet", "--batch", "--no-use-agent", "--output", filename, "--passphrase-fd", "0", "-"]
+    gpg_process = subprocess.Popen(gpg_args, stdin=subprocess.PIPE, stdout=None, stderr=subprocess.PIPE)
     
-    # Supply password and plaintext to GPG, store any error messages, and 
-    with open(passfile, "w") as f1:
-      f1.write(password)      
+    # Supply password and plaintext to GPG, store any error messages
     with gpg_process.stdin as f2:
-      f2.write(text)
+      f2.write(password + "\n" + text)
+      
     with gpg_process.stderr as f3:
       self.last_operation["gpg_err"] = f3.read()
 
     # Wait for GPG to finish, then cleanup temporary files
     gpg_process.wait()
+    
     self.last_operation["gpg_return"] = gpg_process.returncode
-    os.unlink(passfile)
-    os.rmdir(tempdir)
-    if(self.last_operation["gpg_return"] == 2):
-      self.last_operation["error"] = "Wrong password"
+    if(self.last_operation["gpg_return"] != 0):
+      self.last_operation["error"] = "GPG returned error" + self.last_operation["gpg_err"]
       return(False)
-    elif(self.last_operation["gpg_return"] != 0):
-      self.last_operation["error"] = "GPG returned error" + last_operation["gpg_err"]
-      return(False)
-      
+    print "OK"
     return(True)
     
   def gpg_OK(self):
     """Tests whether GPG exists"""
-    return(os.path.exists(self.gpg))
+    return(self.gpg_version() != None)
 
   def gpg_version(self):
     """Gets the version of GPG we're using"""
-    version = "Unknown"
-    gpg_process = subprocess.Popen([self.gpg, "--version"], stdin=None, stdout=subprocess.PIPE, stderr=None, close_fds=True)
+    version = None
+    gpg_process = subprocess.Popen([self.gpg, "--version"], stdin=None, stdout=subprocess.PIPE, stderr=None)
     with gpg_process.stdout as f3:
       version = f3.readline().rstrip()
     gpg_process.wait()
@@ -512,7 +487,7 @@ class privedit:
     """Displays information about the program"""
     msg = APP_NAME + "\n" + DESCRIPTION + "\n\n" + COPYRIGHT + "\n" + LICENSE
     msg += "\n\nRunning \"" + self_location + "\" from \"" + os.getcwd() + "\"\nSHA256: " + self_hash
-    msg += "\n\nUsing " + self.gpg_version() + "\nAt \"" + self.gpg + "\""
+    msg += "\n\nUsing " + str(self.gpg_version()) + "\nAt \"" + self.gpg + "\""
     
 
     dlg = gtk.MessageDialog(self.window, 
